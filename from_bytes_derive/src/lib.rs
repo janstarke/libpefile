@@ -4,6 +4,7 @@ use crate::proc_macro::TokenStream;
 use quote::quote;
 use syn;
 
+
 #[proc_macro_derive(StructFromBytes)]
 pub fn from_bytes_derive(input: TokenStream) -> TokenStream {
     let ast = syn::parse(input).unwrap();
@@ -14,8 +15,9 @@ fn impl_from_bytes(ast: &syn::DeriveInput) -> TokenStream {
     let name = &ast.ident;
     let gen = quote! {
         impl StructFromBytes for #name {
-            fn from_bytes(bytes: &[u8]) -> std::io::Result<Box<Self>> {
-                match Self::unpack(bytes.try_into().expect("slice with incorrect length")) {
+            fn from_bytes(slice: &[u8], offset: usize) -> std::io::Result<Box<Self>> {
+                let size = Self::packed_size();
+                match Self::unpack(slice[offset..offset+size].try_into().expect("slice with incorrect length")) {
                     Ok(v)    => Ok(Box::new(v)),
                     Err(why) => Err(std::io::Error::new(std::io::ErrorKind::InvalidData, format!("{:?}", why)))
                 }
