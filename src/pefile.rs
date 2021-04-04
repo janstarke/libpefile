@@ -81,8 +81,7 @@ impl PEFile {
             for idx in 0..entry_count {
                 let entry = IMAGE_DATA_DIRECTORY::from_bytes(&mmap, offset + (entry_size * idx))?;
 
-                let entry_type:IMAGE_DIRECTORY_ENTRY = FromPrimitive::from_usize(idx).unwrap();
-                log::debug!("section {:?}: address = 0x{:08x}, size = {:08x}", entry_type, entry.VirtualAddress, entry.Size);
+                log::debug!("address = 0x{:08x}, size = {:08x}", entry.VirtualAddress, entry.Size);
                 if entry.VirtualAddress != 0 {
                     sections.push(Some(*entry));
                 } else {
