@@ -1,7 +1,19 @@
+
+#[allow(non_snake_case)]
+#[allow(non_camel_case_types)]
+mod pefile;
+
+#[allow(non_snake_case)]
+#[allow(non_camel_case_types)]
+mod winnt;
+
 use argparse::{ArgumentParser, Store};
 use std::path::PathBuf;
+use pefile::*;
+use simple_logger::SimpleLogger;
 
 fn main() {
+    SimpleLogger::new().init().unwrap();
     let mut pefile = String::new();
     {
         let mut ap = ArgumentParser::new();
@@ -9,5 +21,10 @@ fn main() {
         ap.refer(&mut pefile).add_argument("pefile", Store, "name of the PE file").required();
         ap.parse_args_or_exit();
     }
-    let pefile = PathBuf::from(pefile);
+    let pefile = match PEFile::new(PathBuf::from(pefile)) {
+        Ok(file)    =>  file,
+        Err(why)    =>  {log::error!("{}", why); std::process::exit(1); }
+    };
+    println!("INFO:");
+    println!("{}", pefile.info());
 }
