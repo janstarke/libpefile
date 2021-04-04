@@ -12,6 +12,15 @@ pub enum IMAGE_OPTIONAL_HEADER {
   x86(IMAGE_OPTIONAL_HEADER32)
 }
 
+impl IMAGE_OPTIONAL_HEADER {
+  pub fn NumberOfRvaAndSizes(&self) -> u32 {
+    match self {
+      IMAGE_OPTIONAL_HEADER::AMD64(v)  => v.NumberOfRvaAndSizes,
+      IMAGE_OPTIONAL_HEADER::x86(v)    => v.NumberOfRvaAndSizes
+    }
+  }
+}
+
 #[derive(PrimitiveEnum_u16, PackedSize_u16, FromPrimitive, Clone, Copy, PartialEq, Debug)]
 pub enum IMAGE_NT_OPTIONAL_HEADER {
     IMAGE_NT_OPTIONAL_HDR32_MAGIC = 0x10b,

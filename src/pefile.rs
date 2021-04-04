@@ -80,7 +80,10 @@ impl PEFile {
 
     pub fn info(&self) -> String {
         let mut lines = Vec::new();
-        lines.push(format!("Machine: {:?}", self.image_file_header.Machine));
+        lines.push(format!("Machine:  {:?}", self.image_file_header.Machine));
+        if let Some(v) = &self.image_optional_header {
+            lines.push(format!("Sections: {}", v.NumberOfRvaAndSizes()));
+        }
         lines.join("\n")
     }
 }
