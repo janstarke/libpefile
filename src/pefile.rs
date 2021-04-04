@@ -17,14 +17,16 @@ pub struct PEFile {
     image_dos_header: IMAGE_DOS_HEADER,
     image_file_header: IMAGE_FILE_HEADER,
     image_optional_header: Option<IMAGE_OPTIONAL_HEADER>,
+    sections: Vec<Option<IMAGE_DATA_DIRECTORY>>,
 }
 
 impl PEFile {
     pub fn new(filename: PathBuf) -> std::io::Result<PEFile> {
+        let mut offset = 0;
         let file=File::open(&filename)?;
         let mmap = unsafe { MmapOptions::new().map(&file)? };
 
-        let image_dos_header = IMAGE_DOS_HEADER::from_bytes(&mmap, 0)?;
+        let image_dos_header = IMAGE_DOS_HEADER::from_bytes(&mmap, offset)?;
 
         if image_dos_header.e_magic != LittleEndian::read_u16(b"MZ") {
             return Err(Error::new(ErrorKind::InvalidData, format!("illegal DOS magic: {:?}", &mmap[0..2])));
@@ -40,10 +42,11 @@ impl PEFile {
             log::debug!("NT magic is ok");
         }
         
-        let nt_header = (image_dos_header.e_lfanew + 4) as usize;
+        offset = (image_dos_header.e_lfanew + 4) as usize;
         let nt_header_size = IMAGE_FILE_HEADER::packed_size();
-        log::debug!("searching extended header at 0x{:08x}, size = {}", nt_header, nt_header_size);
-        let image_file_header = IMAGE_FILE_HEADER::from_bytes(&mmap, nt_header)?;
+        log::debug!("searching extended header at 0x{:08x}, size = {}", offset, nt_header_size);
+        let image_file_header = IMAGE_FILE_HEADER::from_bytes(&mmap, offset)?;
+        offset += nt_header_size;
 
         let optional_header_size = image_file_header.SizeOfOptionalHeader as usize;
         log::debug!("size of optional header is {}", optional_header_size);
@@ -51,15 +54,16 @@ impl PEFile {
         let image_optional_header = if optional_header_size == 0 {
             None
         } else {
-            let header_offset = nt_header + nt_header_size;
-            let header_magic = &mmap[header_offset..header_offset+2];
+            let header_magic = &mmap[offset..offset+2];
             match FromPrimitive::from_u16(LittleEndian::read_u16(header_magic)) {
                 Some(IMAGE_NT_OPTIONAL_HEADER::IMAGE_NT_OPTIONAL_HDR32_MAGIC) => {
-                    let header = IMAGE_OPTIONAL_HEADER32::from_bytes(&mmap, header_offset)?;
+                    let header = IMAGE_OPTIONAL_HEADER32::from_bytes(&mmap, offset)?;
+                    offset += IMAGE_OPTIONAL_HEADER32::packed_size();
                     Some(x86(*header))
                 }
                 Some(IMAGE_NT_OPTIONAL_HEADER::IMAGE_NT_OPTIONAL_HDR64_MAGIC) => {
-                    let header = IMAGE_OPTIONAL_HEADER64::from_bytes(&mmap, header_offset)?;
+                    let header = IMAGE_OPTIONAL_HEADER64::from_bytes(&mmap, offset)?;
+                    offset += IMAGE_OPTIONAL_HEADER64::packed_size();
                     Some(AMD64(*header))
                 }
                 _  => {
@@ -68,12 +72,32 @@ impl PEFile {
             }
         };
 
+        log::debug!("offset is at {:08x}", offset);
+
+        let mut sections = Vec::new();
+        if let Some(oh) = &image_optional_header {
+            let entry_count = oh.NumberOfRvaAndSizes() as usize;
+            let entry_size = IMAGE_DATA_DIRECTORY::packed_size();
+            for idx in 0..entry_count {
+                let entry = IMAGE_DATA_DIRECTORY::from_bytes(&mmap, offset + (entry_size * idx))?;
+
+                let entry_type:IMAGE_DIRECTORY_ENTRY = FromPrimitive::from_usize(idx).unwrap();
+                log::debug!("section {:?}: address = 0x{:08x}, size = {:08x}", entry_type, entry.VirtualAddress, entry.Size);
+                if entry.VirtualAddress != 0 {
+                    sections.push(Some(*entry));
+                } else {
+                    sections.push(None);
+                }
+            }
+        }
+
         let me = PEFile {
             filename,
             mmap,
             image_dos_header: *image_dos_header,
             image_file_header: *image_file_header,
             image_optional_header,
+            sections,
         };
         return Ok(me);
     }
