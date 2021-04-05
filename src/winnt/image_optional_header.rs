@@ -4,8 +4,8 @@ use from_bytes::StructFromBytes;
 use from_bytes_derive::StructFromBytes;
 use packed_size::*;
 use packed_size_derive::*;
-use std::convert::TryInto;
 use num_derive::FromPrimitive;
+use num_derive::ToPrimitive;
 
 pub enum IMAGE_OPTIONAL_HEADER {
   AMD64(IMAGE_OPTIONAL_HEADER64),
@@ -99,7 +99,7 @@ pub struct IMAGE_OPTIONAL_HEADER32 {
     pub NumberOfRvaAndSizes: u32,
 }
 
-#[derive(FromPrimitive, Debug)]
+#[derive(FromPrimitive, ToPrimitive, Debug)]
 pub enum IMAGE_DIRECTORY_ENTRY {
   IMAGE_DIRECTORY_ENTRY_EXPORT = 0,
   IMAGE_DIRECTORY_ENTRY_IMPORT = 1,

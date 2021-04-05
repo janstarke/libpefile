@@ -4,7 +4,6 @@ use from_bytes::StructFromBytes;
 use from_bytes_derive::StructFromBytes;
 use packed_size::*;
 use packed_size_derive::*;
-use std::convert::TryInto;
 use num_derive::FromPrimitive;
 
 #[derive(PrimitiveEnum_u16, PackedSize_u16, FromPrimitive, Clone, Copy, PartialEq, Debug)]

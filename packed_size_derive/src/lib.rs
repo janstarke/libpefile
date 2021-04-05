@@ -37,7 +37,7 @@ pub fn packed_size_derive(input: proc_macro::TokenStream) -> proc_macro::TokenSt
     let name = &ast.ident;
     let sum = packed_bytes_sum(&ast.data);
 
-    //panic!("{}", sum);
+    //println!("{}", sum);
 
     let expanded = quote! {
         impl PackedSize for #name {

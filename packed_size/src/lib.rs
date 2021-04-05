@@ -20,5 +20,6 @@ pub trait PackedSize {
 )]
 impl PackedSize for int_type { fn packed_size() -> usize { return size_of::<int_type>(); } }
 
+impl PackedSize for [u8;8] { fn packed_size() -> usize { return 8 * size_of::<u8>(); } }
 impl PackedSize for [u16;4] { fn packed_size() -> usize { return 4 * size_of::<u16>(); } }
 impl PackedSize for [u16;10] { fn packed_size() -> usize { return 10 * size_of::<u16>(); } }

@@ -17,7 +17,7 @@ fn impl_from_bytes(ast: &syn::DeriveInput) -> TokenStream {
         impl StructFromBytes for #name {
             fn from_bytes(slice: &[u8], offset: usize) -> std::io::Result<Box<Self>> {
                 let size = Self::packed_size();
-                match Self::unpack(slice[offset..offset+size].try_into().expect("slice with incorrect length")) {
+                match Self::unpack_from_slice(&slice[offset..offset+size]) {
                     Ok(v)    => Ok(Box::new(v)),
                     Err(why) => Err(std::io::Error::new(std::io::ErrorKind::InvalidData, format!("{:?}", why)))
                 }

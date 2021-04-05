@@ -3,7 +3,9 @@ use std::fs::File;
 use std::io::{Error, ErrorKind};
 use memmap::MmapOptions;
 use byteorder::{ByteOrder, LittleEndian};
+use num_traits::ToPrimitive;
 use num_traits::FromPrimitive;
+use std::str;
 
 use from_bytes::StructFromBytes;
 use packed_size::*;
@@ -74,6 +76,7 @@ impl PEFile {
 
         log::debug!("offset is at {:08x}", offset);
 
+        // load data directory
         let mut sections = Vec::new();
         if let Some(oh) = &image_optional_header {
             let entry_count = oh.NumberOfRvaAndSizes() as usize;
@@ -81,15 +84,50 @@ impl PEFile {
             for idx in 0..entry_count {
                 let entry = IMAGE_DATA_DIRECTORY::from_bytes(&mmap, offset + (entry_size * idx))?;
 
-                log::debug!("address = 0x{:08x}, size = {:08x}", entry.VirtualAddress, entry.Size);
                 if entry.VirtualAddress != 0 {
+                    log::debug!("DATA DIRECTORY {:02}: address = 0x{:08x}, size = {}", idx, entry.VirtualAddress, entry.Size);
                     sections.push(Some(*entry));
                 } else {
+                    log::debug!("DATA DIRECTORY {:02}: <EMPTY>", idx);
                     sections.push(None);
                 }
             }
+
+            offset += entry_size * entry_count;
         }
 
+        // load section headers
+        let entry_size = IMAGE_SECTION_HEADER::packed_size();
+        for idx in 0 .. image_file_header.NumberOfSections {
+            let entry = IMAGE_SECTION_HEADER::from_bytes(&mmap, offset + (entry_size * idx as usize))?;
+
+            let section_name = str::from_utf8(&entry.Name[..]).unwrap();
+            let virt_size  = entry.Misc;
+            let virt_addr  = entry.VirtualAddress;
+            let raw_offset = entry.PointerToRawData;
+            let raw_size   = entry.SizeOfRawData;
+
+            log::debug!("{:02} {}  VirtAddr: {:08x}      VirtSize: {:08x}", idx, section_name, virt_addr, virt_size);
+            log::debug!("  raw data offs: {:08x} raw data size: {:08x} ",raw_offset, raw_size);
+        }
+/*
+        let idx_resources = ToPrimitive::to_usize(&IMAGE_DIRECTORY_ENTRY::IMAGE_DIRECTORY_ENTRY_RESOURCE).unwrap();
+        if let Some(entry) = &sections[idx_resources] {
+            // create slice to enforce bounds checking
+            let rva = entry.VirtualAddress as usize;
+            log::debug!("loading resources of size {} at 0x{:08x}", entry.Size, rva);
+            //let resources = &mmap[rva .. rva+entry.Size as usize];
+            let entry_size = IMAGE_RESOURCE_DIRECTORY_ENTRY::packed_size();
+
+            let root = IMAGE_RESOURCE_DIRECTORY::from_bytes(&mmap, rva)?;
+            let offset = rva + IMAGE_RESOURCE_DIRECTORY::packed_size();
+
+            for idx in 0..root.NumberOfIdEntries {
+                let e = IMAGE_RESOURCE_DIRECTORY_ENTRY::from_bytes(&mmap, offset + (entry_size * idx as usize))?;
+                log::debug!("Name = {}, Offset = 0x{:08x}", e.Name, e.OffsetToData);
+            }
+        }
+*/
         let me = PEFile {
             filename,
             mmap,

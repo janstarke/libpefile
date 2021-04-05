@@ -4,7 +4,6 @@ use from_bytes::StructFromBytes;
 use from_bytes_derive::StructFromBytes;
 use packed_size::*;
 use packed_size_derive::*;
-use std::convert::TryInto;
 
 #[derive(PackedStruct, Debug, StructFromBytes, PackedSize)]
 #[packed_struct(endian="lsb")]
