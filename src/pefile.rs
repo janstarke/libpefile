@@ -3,7 +3,7 @@ use std::fs::File;
 use std::io::{Error, ErrorKind};
 use memmap::MmapOptions;
 use byteorder::{ByteOrder, LittleEndian};
-use num_traits::ToPrimitive;
+//use num_traits::ToPrimitive;
 use num_traits::FromPrimitive;
 use std::str;
 
@@ -19,7 +19,8 @@ pub struct PEFile {
     image_dos_header: IMAGE_DOS_HEADER,
     image_file_header: IMAGE_FILE_HEADER,
     image_optional_header: Option<IMAGE_OPTIONAL_HEADER>,
-    sections: Vec<Option<IMAGE_DATA_DIRECTORY>>,
+    directories: Vec<Option<IMAGE_DATA_DIRECTORY>>,
+    sections: Vec<IMAGE_SECTION_HEADER>
 }
 
 impl PEFile {
@@ -77,7 +78,7 @@ impl PEFile {
         log::debug!("offset is at {:08x}", offset);
 
         // load data directory
-        let mut sections = Vec::new();
+        let mut directories = Vec::new();
         if let Some(oh) = &image_optional_header {
             let entry_count = oh.NumberOfRvaAndSizes() as usize;
             let entry_size = IMAGE_DATA_DIRECTORY::packed_size();
@@ -86,10 +87,10 @@ impl PEFile {
 
                 if entry.VirtualAddress != 0 {
                     log::debug!("DATA DIRECTORY {:02}: address = 0x{:08x}, size = {}", idx, entry.VirtualAddress, entry.Size);
-                    sections.push(Some(*entry));
+                    directories.push(Some(*entry));
                 } else {
                     log::debug!("DATA DIRECTORY {:02}: <EMPTY>", idx);
-                    sections.push(None);
+                    directories.push(None);
                 }
             }
 
@@ -97,6 +98,7 @@ impl PEFile {
         }
 
         // load section headers
+        let mut sections = Vec::new();
         let entry_size = IMAGE_SECTION_HEADER::packed_size();
         for idx in 0 .. image_file_header.NumberOfSections {
             let entry = IMAGE_SECTION_HEADER::from_bytes(&mmap, offset + (entry_size * idx as usize))?;
@@ -109,8 +111,34 @@ impl PEFile {
 
             log::debug!("{:02} {}  VirtAddr: {:08x}      VirtSize: {:08x}", idx, section_name, virt_addr, virt_size);
             log::debug!("  raw data offs: {:08x} raw data size: {:08x} ",raw_offset, raw_size);
+
+            sections.push(*entry);
         }
-/*
+
+        let me = PEFile {
+            filename,
+            mmap,
+            image_dos_header: *image_dos_header,
+            image_file_header: *image_file_header,
+            image_optional_header,
+            directories,
+            sections,
+        };
+        return Ok(me);
+    }
+    
+    #[allow(dead_code)]
+    pub fn info(&self) -> String {
+        let mut lines = Vec::new();
+        lines.push(format!("Machine:  {:?}", self.image_file_header.Machine));
+        if let Some(v) = &self.image_optional_header {
+            lines.push(format!("Sections: {}", v.NumberOfRvaAndSizes()));
+        }
+        lines.join("\n")
+    }
+
+    pub fn list_resources(&self) {
+        /*
         let idx_resources = ToPrimitive::to_usize(&IMAGE_DIRECTORY_ENTRY::IMAGE_DIRECTORY_ENTRY_RESOURCE).unwrap();
         if let Some(entry) = &sections[idx_resources] {
             // create slice to enforce bounds checking
@@ -128,23 +156,6 @@ impl PEFile {
             }
         }
 */
-        let me = PEFile {
-            filename,
-            mmap,
-            image_dos_header: *image_dos_header,
-            image_file_header: *image_file_header,
-            image_optional_header,
-            sections,
-        };
-        return Ok(me);
-    }
-
-    pub fn info(&self) -> String {
-        let mut lines = Vec::new();
-        lines.push(format!("Machine:  {:?}", self.image_file_header.Machine));
-        if let Some(v) = &self.image_optional_header {
-            lines.push(format!("Sections: {}", v.NumberOfRvaAndSizes()));
-        }
-        lines.join("\n")
+        ()
     }
 }

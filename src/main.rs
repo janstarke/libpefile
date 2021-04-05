@@ -24,6 +24,5 @@ fn main() {
         Ok(file)    =>  file,
         Err(why)    =>  {log::error!("{}", why); std::process::exit(1); }
     };
-    println!("INFO:");
-    println!("{}", pefile.info());
+    pefile.list_resources();
 }
