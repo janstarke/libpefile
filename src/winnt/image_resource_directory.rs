@@ -10,21 +10,21 @@ use packed_size_derive::*;
 pub struct IMAGE_RESOURCE_DIRECTORY
 {
     pub Characteristics: u32,
+    pub TimeDateStamp: u32, 
     pub MajorVersion: u16,
     pub MinorVersion: u16,
-    pub NumberOfIdEntries: u16,
     pub NumberOfNamedEntries: u16,
-    pub TimeDateStamp: u32, 
+    pub NumberOfIdEntries: u16,
 }
 
 #[derive(PackedStruct, Debug, StructFromBytes, PackedSize)]
 #[packed_struct(bit_numbering="msb0", endian="lsb")]
 pub struct IMAGE_RESOURCE_DATA_ENTRY
 {
-    pub CodePage: u32,
     pub OffsetToData: u32,
-    pub Reserved: u32,
     pub Size: u32,
+    pub CodePage: u32,
+    pub Reserved: u32,
 }
 
 #[derive(PackedStruct, Debug, StructFromBytes, PackedSize)]

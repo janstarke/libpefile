@@ -142,7 +142,12 @@ impl PEFile {
                 .find(|&x| (x.VirtualAddress as usize .. (x.VirtualAddress + x.Misc) as usize)
                 .contains(&rva)) {
             None        => None,
-            Some(sect)  => Some(rva - sect.VirtualAddress as usize + sect.PointerToRawData as usize)
+            Some(sect)  => {
+                log::debug!("found rva {:08x} in section {}", rva, str::from_utf8(&sect.Name[..]).unwrap());
+                let raw_address = rva - sect.VirtualAddress as usize + sect.PointerToRawData as usize;
+                log::debug!("raw address is {:08x} ({:x} - {:x} + {:x})", raw_address, rva, sect.VirtualAddress, sect.PointerToRawData);
+                Some(raw_address)
+            }
         }
     }
 
@@ -151,18 +156,27 @@ impl PEFile {
         let idx_resources = ToPrimitive::to_usize(&IMAGE_DIRECTORY_ENTRY::IMAGE_DIRECTORY_ENTRY_RESOURCE).unwrap();
         if let Some(entry) = &self.directories[idx_resources] {
 
-            // create slice to enforce bounds checking
             if let Some(offset) = self.get_raw_address(entry.VirtualAddress as usize) {
                 log::debug!("loading resources of size {} at 0x{:08x}", entry.Size, offset);
+
+                // create slice to enforce bounds checking
                 let resources = &self.mmap[offset .. offset+entry.Size as usize];
                 let entry_size = IMAGE_RESOURCE_DIRECTORY_ENTRY::packed_size();
     
                 let root = IMAGE_RESOURCE_DIRECTORY::from_bytes(&resources, 0)?;
                 log::debug!("found root: {:?}", root);
+
+                let offset = IMAGE_RESOURCE_DIRECTORY::packed_size();
     
+                for idx in 0..root.NumberOfNamedEntries {
+                    let e = IMAGE_RESOURCE_DIRECTORY_ENTRY::from_bytes(&resources, offset + entry_size * idx as usize)?;
+                    log::debug!("directory named entry {:0}: Name = {}, Offset = 0x{:08x}", idx+1, e.Name, e.OffsetToData);
+                }
+
+                let offset = offset + root.NumberOfNamedEntries as usize * entry_size;
                 for idx in 0..root.NumberOfIdEntries {
-                    let e = IMAGE_RESOURCE_DIRECTORY_ENTRY::from_bytes(&resources, entry_size * idx as usize)?;
-                    log::debug!("Name = {}, Offset = 0x{:08x}", e.Name, e.OffsetToData);
+                    let e = IMAGE_RESOURCE_DIRECTORY_ENTRY::from_bytes(&resources, offset + entry_size * idx as usize)?;
+                    log::debug!("directory id entry {:0}: Name = {}, Offset = 0x{:08x}", idx+1, e.Name, e.OffsetToData);
                 }
             }
         }
