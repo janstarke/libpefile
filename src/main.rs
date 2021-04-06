@@ -12,7 +12,7 @@ use pefile::*;
 use simple_logger::SimpleLogger;
 
 fn main() {
-    SimpleLogger::new().init().unwrap();
+    SimpleLogger::new().with_level(log::LevelFilter::Debug).init().unwrap();
     let mut pefile = String::new();
     {
         let mut ap = ArgumentParser::new();
@@ -24,5 +24,5 @@ fn main() {
         Ok(file)    =>  file,
         Err(why)    =>  {log::error!("{}", why); std::process::exit(1); }
     };
-    pefile.list_resources();
+    let _resources = pefile.get_resources();
 }
