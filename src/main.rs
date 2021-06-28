@@ -5,6 +5,7 @@ mod pefile;
 #[allow(non_snake_case)]
 #[allow(non_camel_case_types)]
 mod winnt;
+mod utils;
 
 use argparse::{ArgumentParser, Store};
 use std::path::PathBuf;
@@ -24,5 +25,5 @@ fn main() {
         Ok(file)    =>  file,
         Err(why)    =>  {log::error!("{}", why); std::process::exit(1); }
     };
-    let _resources = pefile.get_resources();
+    pefile.print_resources();
 }
