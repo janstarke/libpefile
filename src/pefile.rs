@@ -9,8 +9,10 @@ use std::str;
 
 use crate::winnt::IMAGE_OPTIONAL_HEADER::*;
 use crate::winnt::*;
+use crate::utils::*;
 use from_bytes::StructFromBytes;
 use packed_size::*;
+use encoding_rs::*;
 
 pub trait ResourceDirectoryVisitor {
     fn init(&mut self, _pefile: &PEFile) {}
@@ -21,20 +23,20 @@ pub trait ResourceDirectoryVisitor {
         pefile: &PEFile,
         dir: &IMAGE_RESOURCE_DIRECTORY,
         identifier: &EntryIdentifier,
-    );
+    ) -> std::io::Result<()>;
     fn leave_resource_directory(
         &mut self,
         pefile: &PEFile,
         dir: &IMAGE_RESOURCE_DIRECTORY,
         identifier: &EntryIdentifier,
-    );
+    ) -> std::io::Result<()>;
 
     fn visit_resource_data_entry(
         &mut self,
         pefile: &PEFile,
         entry: &IMAGE_RESOURCE_DATA_ENTRY,
         identifier: &EntryIdentifier,
-    );
+    ) -> std::io::Result<()>;
 }
 
 #[allow(dead_code)]
@@ -232,6 +234,14 @@ impl PEFile {
         None
     }
 
+    pub fn resources(&self) -> &[u8] {
+        self.get_resources_section().unwrap()
+    }
+
+    pub fn full_image(&self) -> &[u8] {
+        &self.mmap[..]
+    }
+
     pub fn print_resources(&self) {
         let mut visitor = ConsoleVisitor::new();
         self.visit_resource_tree(&mut visitor).unwrap();
@@ -259,7 +269,7 @@ impl PEFile {
         identifier: EntryIdentifier,
     ) -> std::io::Result<()> {
         let dir = IMAGE_RESOURCE_DIRECTORY::from_bytes(resources, offset)?;
-        visitor.enter_resource_directory(self, &dir, &identifier);
+        visitor.enter_resource_directory(self, &dir, &identifier)?;
 
         let offset = offset + IMAGE_RESOURCE_DIRECTORY::packed_size();
         let entry_size = IMAGE_RESOURCE_DIRECTORY_ENTRY::packed_size();
@@ -268,7 +278,7 @@ impl PEFile {
             let entry_offset = offset + idx * entry_size;
             self.visit_directory_entry(resources, visitor, entry_offset)?;
         }
-        visitor.leave_resource_directory(self, &dir, &identifier);
+        visitor.leave_resource_directory(self, &dir, &identifier)?;
         Ok(())
     }
 
@@ -286,7 +296,7 @@ impl PEFile {
         } else {
             let entry_offset = raw_entry.OffsetToData as usize;
             let raw_entry = IMAGE_RESOURCE_DATA_ENTRY::from_bytes(resources, entry_offset)?;
-            visitor.visit_resource_data_entry(self, &raw_entry, &identifier);
+            visitor.visit_resource_data_entry(self, &raw_entry, &identifier)?;
         }
 
         Ok(())
@@ -346,6 +356,44 @@ impl ConsoleVisitor {
             _ => false
         }
     }
+
+    fn print_messagetable (
+        &mut self,
+        pefile: &PEFile,
+        entry: &IMAGE_RESOURCE_DATA_ENTRY,
+    ) -> std::io::Result<()> {
+        let offset = pefile.get_raw_address(entry.OffsetToData as usize).unwrap();
+        let mrd = MESSAGE_RESOURCE_DATA::from_bytes(pefile.full_image(), offset)?;
+        println!("Blocks: {}", mrd.NumberOfBlocks);
+
+        let blocksize = MESSAGE_RESOURCE_BLOCK::packed_size();
+        let first_block_offset = offset + MESSAGE_RESOURCE_DATA::packed_size();
+        for i in 0..mrd.NumberOfBlocks {
+            let block_offset = first_block_offset + blocksize * i as usize;
+            let block = MESSAGE_RESOURCE_BLOCK::from_bytes(pefile.full_image(), block_offset)?;
+
+            let mut entry_offset = offset + block.OffsetToEntries as usize;
+            for id in block.LowId .. block.HighId + 1 {
+                let entry = MESSAGE_RESOURCE_ENTRY::from_bytes(pefile.full_image(), entry_offset)?;
+                let text_offset = entry_offset + MESSAGE_RESOURCE_ENTRY::packed_size();
+                let message_length = entry.Length as usize - MESSAGE_RESOURCE_ENTRY::packed_size();
+
+                let message =
+                if entry.Flags == 0x0001 {
+                    utf16_from_slice(pefile.full_image(), text_offset, message_length/2)
+                } else if entry.Flags == 0x0000 {
+                    let message_length = message_length;
+                    WINDOWS_1252.decode(&pefile.full_image()[text_offset .. text_offset + message_length]).0.to_string()
+                } else {
+                    panic!("illegal flags value: 0x{:04x}", entry.Flags);
+                };
+                println!("{}{}: '{}'", self.indent(), id, message);
+
+                entry_offset += entry.Length as usize;
+            }
+        }
+        Ok(())
+    }
 }
 impl ResourceDirectoryVisitor for ConsoleVisitor {
     fn enter_resource_directory(
@@ -353,7 +401,7 @@ impl ResourceDirectoryVisitor for ConsoleVisitor {
         _pefile: &PEFile,
         _dir: &IMAGE_RESOURCE_DIRECTORY,
         identifier: &EntryIdentifier,
-    ) {
+    ) -> std::io::Result<()> {
         self.enter();
 
         match identifier {
@@ -364,28 +412,32 @@ impl ResourceDirectoryVisitor for ConsoleVisitor {
         if self.is_in_messagetable() {
             println!("{}{:?}", self.indent(), identifier);
         }
+        Ok(())
     }
     fn leave_resource_directory(
         &mut self,
         _pefile: &PEFile,
         _dir: &IMAGE_RESOURCE_DIRECTORY,
         identifier: &EntryIdentifier,
-    ) {
+    ) -> std::io::Result<()> {
         self.leave();
         match identifier {
             EntryIdentifier::NoIdentifier => (),
             _ => { let _ = self.id_stack.pop(); }
         }
+        Ok(())
     }
 
     fn visit_resource_data_entry(
         &mut self,
-        _pefile: &PEFile,
-        _entry: &IMAGE_RESOURCE_DATA_ENTRY,
+        pefile: &PEFile,
+        entry: &IMAGE_RESOURCE_DATA_ENTRY,
         identifier: &EntryIdentifier,
-    ) {
+    ) -> std::io::Result<()> {
         if self.is_in_messagetable() {
             println!("{} -> {:?}", self.indent(), identifier);
+            self.print_messagetable(pefile, entry)?;
         }
+        Ok(())
     }
 }
