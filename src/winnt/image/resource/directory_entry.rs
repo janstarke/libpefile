@@ -41,7 +41,7 @@ impl IMAGE_RESOURCE_DIRECTORY_ENTRY {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum EntryIdentifier {
     Name(String),
     Id(u16),
