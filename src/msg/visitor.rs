@@ -17,31 +17,13 @@ enum ResourceType {
 }
 
 pub struct MessageTableVisitor {
-    level: u32,
     id_stack: Vec<EntryIdentifier>
 }
 impl MessageTableVisitor {
     pub fn new() -> Self {
         MessageTableVisitor {
-            level: 0,
             id_stack: Vec::new()
         }
-    }
-    fn indent(&self) -> String {
-        let mut res = String::with_capacity(self.level as usize * 2);
-        for _ in 0..self.level {
-            res.push_str("  ");
-        }
-        res
-    }
-    fn enter(&mut self) {
-        self.level += 1;
-    }
-    fn leave(&mut self) {
-        if self.level == 0 {
-            panic!("stack underflow");
-        }
-        self.level -= 1;
     }
     fn is_in_messagetable(&self) -> bool {
         match self.id_stack.first() {
@@ -61,7 +43,7 @@ impl MessageTableVisitor {
         entry: &IMAGE_RESOURCE_DATA_ENTRY,
     ) -> std::io::Result<()> {
         for msg in pefile.messages_iter(0, entry)? {
-            println!("{}{}: '{}'", self.indent(), msg.msg_id, msg.text);
+            println!("{}: '{}'", msg.msg_id, msg.text);
         }
         Ok(())
     }
@@ -73,15 +55,9 @@ impl ResourceDirectoryVisitor for MessageTableVisitor {
         _dir: &IMAGE_RESOURCE_DIRECTORY,
         identifier: &EntryIdentifier,
     ) -> std::io::Result<()> {
-        self.enter();
-
         match identifier {
             EntryIdentifier::NoIdentifier => (),
             _ => self.id_stack.push(identifier.clone()),
-        }
-
-        if self.is_in_messagetable() {
-            println!("{}{:?}", self.indent(), identifier);
         }
         Ok(())
     }
@@ -91,7 +67,6 @@ impl ResourceDirectoryVisitor for MessageTableVisitor {
         _dir: &IMAGE_RESOURCE_DIRECTORY,
         identifier: &EntryIdentifier,
     ) -> std::io::Result<()> {
-        self.leave();
         match identifier {
             EntryIdentifier::NoIdentifier => (),
             _ => { let _ = self.id_stack.pop(); }
@@ -106,7 +81,6 @@ impl ResourceDirectoryVisitor for MessageTableVisitor {
         identifier: &EntryIdentifier,
     ) -> std::io::Result<()> {
         if self.is_in_messagetable() {
-            println!("{} -> {:?}", self.indent(), identifier);
             self.print_messagetable(pefile, entry)?;
         }
         Ok(())
