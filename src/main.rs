@@ -26,5 +26,8 @@ fn main() {
         Ok(file)    =>  file,
         Err(why)    =>  {log::error!("{}", why); std::process::exit(1); }
     };
-    pefile.print_resources();
+
+    for msg in pefile.messages_iter().unwrap() {
+        println!("{}: '{}'", msg.msg_id, msg.text);
+    }
 }

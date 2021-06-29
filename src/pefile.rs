@@ -13,31 +13,6 @@ use crate::msg::*;
 use from_bytes::StructFromBytes;
 use packed_size::*;
 
-pub trait ResourceDirectoryVisitor {
-    fn init(&mut self, _pefile: &PEFile) {}
-    fn finalize(&mut self, _pefile: &PEFile) {}
-
-    fn enter_resource_directory(
-        &mut self,
-        pefile: &PEFile,
-        dir: &IMAGE_RESOURCE_DIRECTORY,
-        identifier: &EntryIdentifier,
-    ) -> std::io::Result<()>;
-    fn leave_resource_directory(
-        &mut self,
-        pefile: &PEFile,
-        dir: &IMAGE_RESOURCE_DIRECTORY,
-        identifier: &EntryIdentifier,
-    ) -> std::io::Result<()>;
-
-    fn visit_resource_data_entry(
-        &mut self,
-        pefile: &PEFile,
-        entry: &IMAGE_RESOURCE_DATA_ENTRY,
-        identifier: &EntryIdentifier,
-    ) -> std::io::Result<()>;
-}
-
 #[allow(dead_code)]
 pub struct PEFile {
     filename: PathBuf,
@@ -242,27 +217,28 @@ impl PEFile {
     }
 
     pub fn print_resources(&self) {
-        let mut visitor = MessageTableVisitor::new();
+        let mut visitor = MessageTableVisitor::new(self);
         self.visit_resource_tree(&mut visitor).unwrap();
     }
 
 
-    pub fn messages_iter(&self, lang_id: u32, 
-        resource_entry: &IMAGE_RESOURCE_DATA_ENTRY) -> std::io::Result<MessagesIterator> {
-        MessagesIterator::new(self, lang_id, resource_entry, None)
+    pub fn messages_iter<'a>(&'a self) -> std::io::Result<impl Iterator<Item=Message> + 'a> {
+        let mut visitor = MessageTableVisitor::new(self);
+        self.visit_resource_tree(&mut visitor);
+        Ok(visitor.into_iter())
     }
 
     pub fn visit_resource_tree<V: ResourceDirectoryVisitor>(
         &self,
         visitor: &mut V,
     ) -> std::io::Result<()> {
-        visitor.init(self);
+        visitor.init();
 
         if let Some(resources) = self.get_resources_section() {
             self.visit_directory(resources, visitor, 0, EntryIdentifier::NoIdentifier)?;
         }
 
-        visitor.finalize(self);
+        visitor.finalize();
         Ok(())
     }
 
@@ -274,7 +250,7 @@ impl PEFile {
         identifier: EntryIdentifier,
     ) -> std::io::Result<()> {
         let dir = IMAGE_RESOURCE_DIRECTORY::from_bytes(resources, offset)?;
-        visitor.enter_resource_directory(self, &dir, &identifier)?;
+        visitor.enter_resource_directory(&dir, &identifier)?;
 
         let offset = offset + IMAGE_RESOURCE_DIRECTORY::packed_size();
         let entry_size = IMAGE_RESOURCE_DIRECTORY_ENTRY::packed_size();
@@ -283,7 +259,7 @@ impl PEFile {
             let entry_offset = offset + idx * entry_size;
             self.visit_directory_entry(resources, visitor, entry_offset)?;
         }
-        visitor.leave_resource_directory(self, &dir, &identifier)?;
+        visitor.leave_resource_directory(&dir, &identifier)?;
         Ok(())
     }
 
@@ -301,7 +277,7 @@ impl PEFile {
         } else {
             let entry_offset = raw_entry.OffsetToData as usize;
             let raw_entry = IMAGE_RESOURCE_DATA_ENTRY::from_bytes(resources, entry_offset)?;
-            visitor.visit_resource_data_entry(self, &raw_entry, &identifier)?;
+            visitor.visit_resource_data_entry(&raw_entry, &identifier)?;
         }
 
         Ok(())
