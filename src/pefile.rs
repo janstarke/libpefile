@@ -24,7 +24,21 @@ pub struct PEFile {
     sections: Vec<IMAGE_SECTION_HEADER>,
 }
 
+/// represents a Portable Executable file
+/// 
+/// # Example
+/// ```
+/// use libpefile::*;
+/// use std::path::PathBuf;
+/// # fn main() -> std::io::Result<()> {
+/// let manifest_dir = std::env::var("CARGO_MANIFEST_DIR").unwrap();
+/// let dll_file = PathBuf::from(format!("{}/samples/msaudite.dll", manifest_dir));
+/// let pefile = PEFile::new(dll_file)?;
+/// 
+/// # Ok(())
+/// # }
 impl PEFile {
+    /// parses a portable executable file into an internal data structure
     pub fn new(filename: PathBuf) -> std::io::Result<PEFile> {
         let mut offset = 0;
         let file = File::open(&filename)?;
@@ -155,16 +169,10 @@ impl PEFile {
         };
         return Ok(me);
     }
-    #[allow(dead_code)]
-    pub fn info(&self) -> String {
-        let mut lines = Vec::new();
-        lines.push(format!("Machine:  {:?}", self.image_file_header.Machine));
-        if let Some(v) = &self.image_optional_header {
-            lines.push(format!("Sections: {}", v.NumberOfRvaAndSizes()));
-        }
-        lines.join("\n")
-    }
 
+    /// calculates the offset in the file for a given RVA
+    /// 
+    /// see also: [https://docs.microsoft.com/en-us/windows/win32/debug/pe-format](https://docs.microsoft.com/en-us/windows/win32/debug/pe-format)
     pub fn get_raw_address(&self, rva: usize) -> Option<usize> {
         match self.sections.iter().find(|&x| {
             (x.VirtualAddress as usize..(x.VirtualAddress + x.Misc) as usize).contains(&rva)
@@ -190,6 +198,7 @@ impl PEFile {
         }
     }
 
+    /// returns a byte slice which containts exactly the resources section
     pub fn get_resources_section(&self) -> Option<&[u8]> {
         let idx_resources =
             ToPrimitive::to_usize(&IMAGE_DIRECTORY_ENTRY::IMAGE_DIRECTORY_ENTRY_RESOURCE).unwrap();
@@ -208,27 +217,40 @@ impl PEFile {
         None
     }
 
+    /// returns a byte slice which containts exactly the resources section and fails if there is none
     pub fn resources(&self) -> &[u8] {
         self.get_resources_section().unwrap()
     }
 
+    /// returns a byte slice of the full image
     pub fn full_image(&self) -> &[u8] {
         &self.mmap[..]
     }
 
-    pub fn print_resources(&self) {
-        let mut visitor = MessageTableVisitor::new(self);
-        self.visit_resource_tree(&mut visitor).unwrap();
-    }
-
-
+    /// returns an iterator over all items in the MESSAGE_TABLE
+    /// 
+    /// # Example
+    /// ```
+    /// use libpefile::*;
+    /// # use std::path::PathBuf;
+    /// # fn main() -> std::io::Result<()> {
+    /// # let manifest_dir = std::env::var("CARGO_MANIFEST_DIR").unwrap();
+    /// # let dll_file = PathBuf::from(format!("{}/samples/msaudite.dll", manifest_dir));
+    /// # let pefile = PEFile::new(dll_file)?;
+    /// 
+    /// for msg in pefile.messages_iter()? {
+    ///     println!("{}: '{}'", msg.msg_id, msg.text);
+    /// }
+    /// # Ok(())
+    /// # }
+    /// ```
     pub fn messages_iter<'a>(&'a self) -> std::io::Result<impl Iterator<Item=Message> + 'a> {
         let mut visitor = MessageTableVisitor::new(self);
-        self.visit_resource_tree(&mut visitor);
+        self.visit_resource_tree(&mut visitor)?;
         Ok(visitor.into_iter())
     }
 
-    pub fn visit_resource_tree<V: ResourceDirectoryVisitor>(
+    fn visit_resource_tree<V: ResourceDirectoryVisitor>(
         &self,
         visitor: &mut V,
     ) -> std::io::Result<()> {
@@ -242,7 +264,7 @@ impl PEFile {
         Ok(())
     }
 
-    pub fn visit_directory<V: ResourceDirectoryVisitor>(
+    fn visit_directory<V: ResourceDirectoryVisitor>(
         &self,
         resources: &[u8],
         visitor: &mut V,
@@ -263,7 +285,7 @@ impl PEFile {
         Ok(())
     }
 
-    pub fn visit_directory_entry<V: ResourceDirectoryVisitor>(
+    fn visit_directory_entry<V: ResourceDirectoryVisitor>(
         &self,
         resources: &[u8],
         visitor: &mut V,

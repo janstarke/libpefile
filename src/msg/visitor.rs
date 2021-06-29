@@ -54,7 +54,7 @@ impl<'pefile> MessageTableVisitor<'pefile> {
         }
     }
 
-    pub fn into_iter(mut self) -> impl Iterator<Item=Message> + 'pefile {
+    pub fn into_iter(self) -> impl Iterator<Item=Message> + 'pefile {
         self.iterators.into_iter().flat_map(|i| i)
     }
 
