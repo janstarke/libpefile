@@ -5,7 +5,9 @@ authors = ["Jan Starke <Jan.Starke@t-systems.com>"]
 edition = "2018"
 description = "library to parse PE files (only iterateing over MESSAGE_TABLE entries is supported at the moment)"
 license-file = "LICENSE"
-include = ["from_bytes"]
+include = [
+    "**/*.rs",
+    "Cargo.toml",]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
