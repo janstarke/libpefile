@@ -9,7 +9,7 @@ use std::str;
 
 use crate::winnt::IMAGE_OPTIONAL_HEADER::*;
 use crate::winnt::*;
-use crate::utils::*;
+use crate::msg::*;
 use from_bytes::StructFromBytes;
 use packed_size::*;
 use encoding_rs::*;
@@ -247,6 +247,12 @@ impl PEFile {
         self.visit_resource_tree(&mut visitor).unwrap();
     }
 
+
+    pub fn messages_iter(&self, lang_id: u32, 
+        resource_entry: &IMAGE_RESOURCE_DATA_ENTRY) -> std::io::Result<MessagesIterator> {
+        MessagesIterator::new(self, lang_id, resource_entry, None)
+    }
+
     pub fn visit_resource_tree<V: ResourceDirectoryVisitor>(
         &self,
         visitor: &mut V,
@@ -362,35 +368,8 @@ impl ConsoleVisitor {
         pefile: &PEFile,
         entry: &IMAGE_RESOURCE_DATA_ENTRY,
     ) -> std::io::Result<()> {
-        let offset = pefile.get_raw_address(entry.OffsetToData as usize).unwrap();
-        let mrd = MESSAGE_RESOURCE_DATA::from_bytes(pefile.full_image(), offset)?;
-        println!("Blocks: {}", mrd.NumberOfBlocks);
-
-        let blocksize = MESSAGE_RESOURCE_BLOCK::packed_size();
-        let first_block_offset = offset + MESSAGE_RESOURCE_DATA::packed_size();
-        for i in 0..mrd.NumberOfBlocks {
-            let block_offset = first_block_offset + blocksize * i as usize;
-            let block = MESSAGE_RESOURCE_BLOCK::from_bytes(pefile.full_image(), block_offset)?;
-
-            let mut entry_offset = offset + block.OffsetToEntries as usize;
-            for id in block.LowId .. block.HighId + 1 {
-                let entry = MESSAGE_RESOURCE_ENTRY::from_bytes(pefile.full_image(), entry_offset)?;
-                let text_offset = entry_offset + MESSAGE_RESOURCE_ENTRY::packed_size();
-                let message_length = entry.Length as usize - MESSAGE_RESOURCE_ENTRY::packed_size();
-
-                let message =
-                if entry.Flags == 0x0001 {
-                    utf16_from_slice(pefile.full_image(), text_offset, message_length/2)
-                } else if entry.Flags == 0x0000 {
-                    let message_length = message_length;
-                    WINDOWS_1252.decode(&pefile.full_image()[text_offset .. text_offset + message_length]).0.to_string()
-                } else {
-                    panic!("illegal flags value: 0x{:04x}", entry.Flags);
-                };
-                println!("{}{}: '{}'", self.indent(), id, message);
-
-                entry_offset += entry.Length as usize;
-            }
+        for msg in pefile.messages_iter(0, entry)? {
+            println!("{}{}: '{}'", self.indent(), msg.msg_id, msg.text);
         }
         Ok(())
     }

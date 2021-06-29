@@ -6,6 +6,7 @@ mod pefile;
 #[allow(non_camel_case_types)]
 mod winnt;
 mod utils;
+mod msg;
 
 use argparse::{ArgumentParser, Store};
 use std::path::PathBuf;
