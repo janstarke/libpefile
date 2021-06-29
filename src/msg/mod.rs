@@ -1,5 +1,7 @@
-pub mod iterator;
+mod iterator;
+mod visitor;
 pub use iterator::*;
+pub use visitor::*;
 
 pub struct Message {
     pub msg_id: u32,

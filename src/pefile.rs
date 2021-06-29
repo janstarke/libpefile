@@ -12,7 +12,6 @@ use crate::winnt::*;
 use crate::msg::*;
 use from_bytes::StructFromBytes;
 use packed_size::*;
-use encoding_rs::*;
 
 pub trait ResourceDirectoryVisitor {
     fn init(&mut self, _pefile: &PEFile) {}
@@ -243,7 +242,7 @@ impl PEFile {
     }
 
     pub fn print_resources(&self) {
-        let mut visitor = ConsoleVisitor::new();
+        let mut visitor = MessageTableVisitor::new();
         self.visit_resource_tree(&mut visitor).unwrap();
     }
 
@@ -305,118 +304,6 @@ impl PEFile {
             visitor.visit_resource_data_entry(self, &raw_entry, &identifier)?;
         }
 
-        Ok(())
-    }
-}
-
-#[allow(dead_code)]
-enum ResourceType {
-    RT_CURSOR = 1,
-    RT_BITMAP = 2,
-    RT_ICON = 3,
-    RT_MENU = 4,
-    RT_DIALOG = 5,
-    RT_STRING = 6,
-    RT_FONTDIR = 7,
-    RT_FONT = 8,
-    RT_ACCELERATOR = 9,
-    RT_RCDATA = 10,
-    RT_MESSAGETABLE = 11,
-}
-
-pub struct ConsoleVisitor {
-    level: u32,
-    id_stack: Vec<EntryIdentifier>
-}
-impl ConsoleVisitor {
-    pub fn new() -> Self {
-        Self {
-            level: 0,
-            id_stack: Vec::new()
-        }
-    }
-    fn indent(&self) -> String {
-        let mut res = String::with_capacity(self.level as usize * 2);
-        for _ in 0..self.level {
-            res.push_str("  ");
-        }
-        res
-    }
-    fn enter(&mut self) {
-        self.level += 1;
-    }
-    fn leave(&mut self) {
-        if self.level == 0 {
-            panic!("stack underflow");
-        }
-        self.level -= 1;
-    }
-    fn is_in_messagetable(&self) -> bool {
-        match self.id_stack.first() {
-            Some(f) => match f {
-                EntryIdentifier::Id(id) => {
-                    *id == (ResourceType::RT_MESSAGETABLE as u16)
-                }
-                _ => false
-            }
-            _ => false
-        }
-    }
-
-    fn print_messagetable (
-        &mut self,
-        pefile: &PEFile,
-        entry: &IMAGE_RESOURCE_DATA_ENTRY,
-    ) -> std::io::Result<()> {
-        for msg in pefile.messages_iter(0, entry)? {
-            println!("{}{}: '{}'", self.indent(), msg.msg_id, msg.text);
-        }
-        Ok(())
-    }
-}
-impl ResourceDirectoryVisitor for ConsoleVisitor {
-    fn enter_resource_directory(
-        &mut self,
-        _pefile: &PEFile,
-        _dir: &IMAGE_RESOURCE_DIRECTORY,
-        identifier: &EntryIdentifier,
-    ) -> std::io::Result<()> {
-        self.enter();
-
-        match identifier {
-            EntryIdentifier::NoIdentifier => (),
-            _ => self.id_stack.push(identifier.clone()),
-        }
-
-        if self.is_in_messagetable() {
-            println!("{}{:?}", self.indent(), identifier);
-        }
-        Ok(())
-    }
-    fn leave_resource_directory(
-        &mut self,
-        _pefile: &PEFile,
-        _dir: &IMAGE_RESOURCE_DIRECTORY,
-        identifier: &EntryIdentifier,
-    ) -> std::io::Result<()> {
-        self.leave();
-        match identifier {
-            EntryIdentifier::NoIdentifier => (),
-            _ => { let _ = self.id_stack.pop(); }
-        }
-        Ok(())
-    }
-
-    fn visit_resource_data_entry(
-        &mut self,
-        pefile: &PEFile,
-        entry: &IMAGE_RESOURCE_DATA_ENTRY,
-        identifier: &EntryIdentifier,
-    ) -> std::io::Result<()> {
-        if self.is_in_messagetable() {
-            println!("{} -> {:?}", self.indent(), identifier);
-            self.print_messagetable(pefile, entry)?;
-        }
         Ok(())
     }
 }
