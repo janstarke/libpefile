@@ -6,9 +6,6 @@ use std::fs::File;
 use std::io::{Error, ErrorKind};
 use std::path::PathBuf;
 use std::str;
-use std::rc::Rc;
-use std::cell::RefCell;
-
 use crate::winnt::IMAGE_OPTIONAL_HEADER::*;
 use crate::winnt::*;
 use crate::msg::*;
