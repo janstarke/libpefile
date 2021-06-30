@@ -1,4 +1,4 @@
-![Crates.io](https://img.shields.io/crates/v/libpefile?style=plastic)
+![https://crates.io/crates/libpefile](https://img.shields.io/crates/v/libpefile?style=plastic)
 
 # libpefile
 
