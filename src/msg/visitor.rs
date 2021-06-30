@@ -54,7 +54,7 @@ impl<'pefile> MessageTableVisitor<'pefile> {
         }
     }
 
-    pub fn into_iter(self) -> impl Iterator<Item=Message> + 'pefile {
+    pub fn into_iter(self) -> impl Iterator<Item=std::io::Result<Message>> + 'pefile {
         self.iterators.into_iter().flat_map(|i| i)
     }
 
@@ -107,7 +107,7 @@ impl<'pefile> ResourceDirectoryVisitor for MessageTableVisitor<'pefile> {
                 EntryIdentifier::Id(x) => x,
                 _ => panic!("unexpected entry identifier")
             };
-            let iterator = MessagesIterator::new(self.pefile, lang_id.into(), entry, None)?;
+            let iterator = MessagesIterator::new(self.pefile, lang_id.into(), entry)?;
             self.iterators.push(iterator);
         }
         Ok(())

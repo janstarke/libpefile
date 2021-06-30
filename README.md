@@ -22,7 +22,7 @@ fn main() -> std::io::Result<()> {
     let dll_file = PathBuf::from(format!("{}/samples/msaudite.dll", manifest_dir));
     let pefile = PEFile::new(dll_file)?;
 
-    for msg in pefile.messages_iter()? {
+    for msg in pefile.messages_iter()?.filter_map(|r| r.ok()) {
         println!("{}: '{}'", msg.msg_id, msg.text);
     }
     Ok(())

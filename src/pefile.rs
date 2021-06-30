@@ -6,6 +6,8 @@ use std::fs::File;
 use std::io::{Error, ErrorKind};
 use std::path::PathBuf;
 use std::str;
+use std::rc::Rc;
+use std::cell::RefCell;
 
 use crate::winnt::IMAGE_OPTIONAL_HEADER::*;
 use crate::winnt::*;
@@ -237,13 +239,13 @@ impl PEFile {
     /// # let dll_file = PathBuf::from(format!("{}/samples/msaudite.dll", manifest_dir));
     /// # let pefile = PEFile::new(dll_file)?;
     /// 
-    /// for msg in pefile.messages_iter()? {
+    /// for msg in pefile.messages_iter()?.filter_map(|r| r.ok()) {
     ///     println!("{}: '{}'", msg.msg_id, msg.text);
     /// }
     /// # Ok(())
     /// # }
     /// ```
-    pub fn messages_iter<'a>(&'a self) -> std::io::Result<impl Iterator<Item=Message> + 'a> {
+    pub fn messages_iter<'a>(&'a self) -> std::io::Result<impl Iterator<Item=std::io::Result<Message>> + 'a> {
         let mut visitor = MessageTableVisitor::new(self);
         self.visit_resource_tree(&mut visitor)?;
         Ok(visitor.into_iter())

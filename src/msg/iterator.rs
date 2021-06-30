@@ -4,7 +4,6 @@ use crate::winnt::*;
 use encoding_rs::*;
 use from_bytes::*;
 
-
 pub struct MessagesIterator<'pefile> {
     pefile: &'pefile PEFile,
 
@@ -18,7 +17,6 @@ pub struct MessagesIterator<'pefile> {
     block_offset: usize,
     entry_offset: usize,
 
-    error_handler: Option<fn(std::io::Error) -> ()>,
     lang_id: u32,
     encodings: [&'static Encoding; 2],
 }
@@ -28,7 +26,6 @@ impl<'pefile> MessagesIterator<'pefile> {
         pefile: &'pefile PEFile,
         lang_id: u32,
         resource_entry: &IMAGE_RESOURCE_DATA_ENTRY,
-        error_handler: Option<fn(std::io::Error) -> ()>,
     ) -> std::io::Result<Self> {
         let rde_offset = pefile
             .get_raw_address(resource_entry.OffsetToData as usize)
@@ -36,7 +33,8 @@ impl<'pefile> MessagesIterator<'pefile> {
         let mrd = MESSAGE_RESOURCE_DATA::from_bytes(pefile.full_image(), rde_offset)?;
 
         // go one step back, because we go one blocksize forward before the first result is returned
-        let block_offset = rde_offset + MESSAGE_RESOURCE_DATA::packed_size() - MESSAGE_RESOURCE_BLOCK::packed_size();
+        let block_offset = rde_offset + MESSAGE_RESOURCE_DATA::packed_size()
+            - MESSAGE_RESOURCE_BLOCK::packed_size();
 
         Ok(Self {
             pefile,
@@ -47,20 +45,12 @@ impl<'pefile> MessagesIterator<'pefile> {
             entry_offset: usize::MAX,
             low_id: 0,
             high_id: 0,
-            error_handler,
             lang_id,
-            encodings: [WINDOWS_1252, UTF_16LE]
+            encodings: [WINDOWS_1252, UTF_16LE],
         })
     }
 
-    fn handle_error(&self, why: std::io::Error) {
-        if let Some(error_handler) = &self.error_handler {
-            error_handler(why);
-        }
-    }
-
     pub fn do_next(&mut self) -> std::io::Result<Option<Message>> {
-        
         let blocksize = MESSAGE_RESOURCE_BLOCK::packed_size();
 
         // find for next block
@@ -70,10 +60,8 @@ impl<'pefile> MessagesIterator<'pefile> {
             }
             self.remaining_blocks -= 1;
             self.block_offset += blocksize;
-            let block = MESSAGE_RESOURCE_BLOCK::from_bytes(
-                self.pefile.full_image(),
-                self.block_offset,
-            )?;
+            let block =
+                MESSAGE_RESOURCE_BLOCK::from_bytes(self.pefile.full_image(), self.block_offset)?;
 
             self.entry_offset = self.rde_offset + block.OffsetToEntries as usize;
             self.low_id = block.LowId;
@@ -83,7 +71,8 @@ impl<'pefile> MessagesIterator<'pefile> {
             self.current_id += 1;
         }
 
-        let entry = MESSAGE_RESOURCE_ENTRY::from_bytes(self.pefile.full_image(), self.entry_offset)?;
+        let entry =
+            MESSAGE_RESOURCE_ENTRY::from_bytes(self.pefile.full_image(), self.entry_offset)?;
         let text_offset = self.entry_offset + MESSAGE_RESOURCE_ENTRY::packed_size();
         let message_length = entry.Length as usize - MESSAGE_RESOURCE_ENTRY::packed_size();
 
@@ -98,14 +87,14 @@ impl<'pefile> MessagesIterator<'pefile> {
 }
 
 impl<'pefile> Iterator for MessagesIterator<'pefile> {
-    type Item = Message;
+    type Item = std::io::Result<Message>;
     fn next(&mut self) -> Option<Self::Item> {
         match self.do_next() {
-            Ok(v) => v,
-            Err(why) => {
-                self.handle_error(why);
-                None
-            }
+            Ok(v) => match v {
+                Some(m) => Some(Ok(m)),
+                None => None
+            },
+            Err(why) => Some(Err(why))
         }
     }
 }
