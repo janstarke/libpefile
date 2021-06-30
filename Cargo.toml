@@ -4,7 +4,7 @@ version = "0.1.0"
 authors = ["Jan Starke <Jan.Starke@t-systems.com>"]
 edition = "2018"
 repository = "https://github.com/janstarke/libpefile"
-description = "library to parse PE files (only iterateing over MESSAGE_TABLE entries is supported at the moment)"
+description = "library to parse PE files (only iterating over MESSAGE_TABLE entries is supported at the moment)"
 license-file = "LICENSE"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -15,8 +15,6 @@ name = "libpefile"
 [dependencies]
 from_bytes = { path = "from_bytes", version = "0.1.0" }
 from_bytes_derive = { path = "from_bytes_derive", version = "0.1.0" }
-packed_size = { path = "packed_size", version = "0.1.0" }
-packed_size_derive = { path = "packed_size_derive", version = "0.1.0" }
 log = "0.4"
 memmap = "0.7.0"
 packed_struct = { version = "0.5", features=["byte_types_256"] }

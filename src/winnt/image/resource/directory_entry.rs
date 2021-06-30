@@ -1,13 +1,7 @@
-use from_bytes::StructFromBytes;
-use from_bytes_derive::StructFromBytes;
-use packed_size::*;
-use packed_size_derive::*;
+use from_bytes::*;
+use from_bytes_derive::*;
 use packed_struct::prelude::*;
 use crate::utils::*;
-/*
-use crate::pefile::*;
-use crate::winnt::*;
-*/
 
 #[derive(PackedStruct, Debug, StructFromBytes, PackedSize)]
 #[packed_struct(bit_numbering = "msb0", endian = "lsb")]

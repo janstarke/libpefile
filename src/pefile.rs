@@ -10,8 +10,7 @@ use std::str;
 use crate::winnt::IMAGE_OPTIONAL_HEADER::*;
 use crate::winnt::*;
 use crate::msg::*;
-use from_bytes::StructFromBytes;
-use packed_size::*;
+use from_bytes::*;
 
 #[allow(dead_code)]
 pub struct PEFile {

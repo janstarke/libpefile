@@ -1,7 +1,5 @@
-use from_bytes::StructFromBytes;
-use from_bytes_derive::StructFromBytes;
-use packed_size::*;
-use packed_size_derive::*;
+use from_bytes::*;
+use from_bytes_derive::*;
 use packed_struct::prelude::*;
 
 #[derive(PackedStruct, Debug, StructFromBytes, PackedSize)]

@@ -2,8 +2,7 @@ use crate::msg::Message;
 use crate::pefile::*;
 use crate::winnt::*;
 use encoding_rs::*;
-use from_bytes::StructFromBytes;
-use packed_size::*;
+use from_bytes::*;
 
 
 pub struct MessagesIterator<'pefile> {
