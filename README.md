@@ -1,4 +1,5 @@
 ![https://crates.io/crates/libpefile](https://img.shields.io/crates/v/libpefile?style=plastic)
+[![Build-and-Test](https://github.com/janstarke/libpefile/actions/workflows/build-and-test.yml/badge.svg)](https://github.com/janstarke/libpefile/actions/workflows/build-and-test.yml)
 
 # libpefile
 
