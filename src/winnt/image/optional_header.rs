@@ -116,7 +116,7 @@ pub enum IMAGE_DIRECTORY_ENTRY {
   IMAGE_DIRECTORY_ENTRY_COM_DESCRIPTOR = 14,
 }
 
-#[derive(PackedStruct, Debug, StructFromBytes, PackedSize)]
+#[derive(PackedStruct, Debug, StructFromBytes, PackedSize, Clone, Copy)]
 #[packed_struct(endian="lsb")]
 pub struct IMAGE_DATA_DIRECTORY {
   pub VirtualAddress: u32,

@@ -18,7 +18,7 @@ pub struct PEFile {
     image_dos_header: IMAGE_DOS_HEADER,
     image_file_header: IMAGE_FILE_HEADER,
     image_optional_header: Option<IMAGE_OPTIONAL_HEADER>,
-    directories: Vec<Option<IMAGE_DATA_DIRECTORY>>,
+    directories: [Option<IMAGE_DATA_DIRECTORY>;16],
     sections: Vec<IMAGE_SECTION_HEADER>,
 }
 
@@ -103,7 +103,7 @@ impl PEFile {
         log::debug!("offset is at {:08x}", offset);
 
         // load data directory
-        let mut directories = Vec::new();
+        let mut directories: [Option<IMAGE_DATA_DIRECTORY>;16] = [None; 16];
         if let Some(oh) = &image_optional_header {
             let entry_count = oh.NumberOfRvaAndSizes() as usize;
             let entry_size = IMAGE_DATA_DIRECTORY::packed_size();
@@ -117,10 +117,10 @@ impl PEFile {
                         entry.VirtualAddress,
                         entry.Size
                     );
-                    directories.push(Some(*entry));
+                    directories[idx] = Some(*entry);
                 } else {
                     log::debug!("DATA DIRECTORY {:02}: <EMPTY>", idx);
-                    directories.push(None);
+                    directories[idx] = None;
                 }
             }
 
@@ -162,10 +162,54 @@ impl PEFile {
             image_dos_header: *image_dos_header,
             image_file_header: *image_file_header,
             image_optional_header,
-            directories,
+            directories: directories,
             sections,
         };
         return Ok(me);
+    }
+
+    /// returns a reference to the `IMAGE_DOS_HEADER` structure
+    pub fn image_dos_header(&self) -> &IMAGE_DOS_HEADER {
+        &self.image_dos_header
+    }
+
+    /// returns a reference to the `IMAGE_FILE_HEADER` structure
+    pub fn image_file_header(&self) -> &IMAGE_FILE_HEADER {
+        &self.image_file_header
+    }
+
+    /// returns a reference to the `IMAGE_OPTIONAL_HEADER` structure (if there is one)
+    pub fn image_optional_header(&self) -> &Option<IMAGE_OPTIONAL_HEADER> {
+        &self.image_optional_header
+    }
+
+    /// retuns a reference to the array of `IMAGE_DATA_DIRECTORY` structures.
+    /// 
+    /// Keep in mind that the entries have predefined indices, as documented at (https://docs.microsoft.com/en-us/windows/win32/api/winnt/ns-winnt-image_optional_header32)[https://docs.microsoft.com/en-us/windows/win32/api/winnt/ns-winnt-image_optional_header32]:
+    /// |Index|Value|Meaning|
+    /// |=====|=====|=======|
+    /// |0|`IMAGE_DIRECTORY_ENTRY_EXPORT`|Export directory|
+    /// |1|`IMAGE_DIRECTORY_ENTRY_IMPORT`|Import directory|
+    /// |2|`IMAGE_DIRECTORY_ENTRY_RESOURCE`|Resource directory|
+    /// |3|`IMAGE_DIRECTORY_ENTRY_EXCEPTION`|Exception directory|
+    /// |4|`IMAGE_DIRECTORY_ENTRY_SECURITY`|Security directory|
+    /// |5|`IMAGE_DIRECTORY_ENTRY_BASERELOC`|Base relocation table|
+    /// |6|`IMAGE_DIRECTORY_ENTRY_DEBUG`|Debug directory|
+    /// |7|`IMAGE_DIRECTORY_ENTRY_ARCHITECTURE`|Architecture-specific data|
+    /// |8|`IMAGE_DIRECTORY_ENTRY_GLOBALPTR`|The relative virtual address of global pointer|
+    /// |9|`IMAGE_DIRECTORY_ENTRY_TLS`|Thread local storage directory|
+    /// |10|`IMAGE_DIRECTORY_ENTRY_LOAD_CONFIG`|Load configuration directory|
+    /// |11|`IMAGE_DIRECTORY_ENTRY_BOUND_IMPORT`|Bound import directory|
+    /// |12|`IMAGE_DIRECTORY_ENTRY_IAT`|Import address table|
+    /// |13|`IMAGE_DIRECTORY_ENTRY_DELAY_IMPORT`|Delay import table|
+    /// |14|`IMAGE_DIRECTORY_ENTRY_COM_DESCRIPTOR`|COM descriptor table|
+    pub fn directories(&self) -> &[Option<IMAGE_DATA_DIRECTORY>;16] {
+        &self.directories
+    }
+
+    /// returns a reference to a vector of section headers
+    pub fn sections(&self) -> &Vec<IMAGE_SECTION_HEADER> {
+        &self.sections
     }
 
     /// calculates the offset in the file for a given RVA
