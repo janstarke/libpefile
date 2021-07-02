@@ -13,8 +13,8 @@ license-file = "LICENSE"
 name = "libpefile"
 
 [dependencies]
-from_bytes = "0.1.0"
-from_bytes_derive = "0.1.0"
+from_bytes = "0.1"
+from_bytes_derive = "0.1"
 log = "0.4"
 memmap = "0.7.0"
 packed_struct = { version = "0.5", features=["byte_types_256"] }
