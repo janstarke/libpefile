@@ -168,46 +168,49 @@ impl PEFile {
         return Ok(me);
     }
 
-    /// returns a reference to the `IMAGE_DOS_HEADER` structure
+    /// returns a reference to the [IMAGE_DOS_HEADER] structure
     pub fn image_dos_header(&self) -> &IMAGE_DOS_HEADER {
         &self.image_dos_header
     }
 
-    /// returns a reference to the `IMAGE_FILE_HEADER` structure
+    /// returns a reference to the [IMAGE_FILE_HEADER] structure
     pub fn image_file_header(&self) -> &IMAGE_FILE_HEADER {
         &self.image_file_header
     }
 
-    /// returns a reference to the `IMAGE_OPTIONAL_HEADER` structure (if there is one)
+    /// returns a reference to the [IMAGE_OPTIONAL_HEADER] structure (if there is one)
     pub fn image_optional_header(&self) -> &Option<IMAGE_OPTIONAL_HEADER> {
         &self.image_optional_header
     }
 
-    /// retuns a reference to the array of `IMAGE_DATA_DIRECTORY` structures.
+    /// retuns a reference to the array of [IMAGE_DATA_DIRECTORY] structures.
     /// 
-    /// Keep in mind that the entries have predefined indices, as documented at (https://docs.microsoft.com/en-us/windows/win32/api/winnt/ns-winnt-image_optional_header32)[https://docs.microsoft.com/en-us/windows/win32/api/winnt/ns-winnt-image_optional_header32]:
+    /// Keep in mind that the entries have predefined indices, as documented at [https://docs.microsoft.com/en-us/windows/win32/api/winnt/ns-winnt-image_optional_header32](https://docs.microsoft.com/en-us/windows/win32/api/winnt/ns-winnt-image_optional_header32):
+    /// 
     /// |Index|Value|Meaning|
-    /// |=====|=====|=======|
-    /// |0|`IMAGE_DIRECTORY_ENTRY_EXPORT`|Export directory|
-    /// |1|`IMAGE_DIRECTORY_ENTRY_IMPORT`|Import directory|
-    /// |2|`IMAGE_DIRECTORY_ENTRY_RESOURCE`|Resource directory|
-    /// |3|`IMAGE_DIRECTORY_ENTRY_EXCEPTION`|Exception directory|
-    /// |4|`IMAGE_DIRECTORY_ENTRY_SECURITY`|Security directory|
-    /// |5|`IMAGE_DIRECTORY_ENTRY_BASERELOC`|Base relocation table|
-    /// |6|`IMAGE_DIRECTORY_ENTRY_DEBUG`|Debug directory|
-    /// |7|`IMAGE_DIRECTORY_ENTRY_ARCHITECTURE`|Architecture-specific data|
-    /// |8|`IMAGE_DIRECTORY_ENTRY_GLOBALPTR`|The relative virtual address of global pointer|
-    /// |9|`IMAGE_DIRECTORY_ENTRY_TLS`|Thread local storage directory|
-    /// |10|`IMAGE_DIRECTORY_ENTRY_LOAD_CONFIG`|Load configuration directory|
-    /// |11|`IMAGE_DIRECTORY_ENTRY_BOUND_IMPORT`|Bound import directory|
-    /// |12|`IMAGE_DIRECTORY_ENTRY_IAT`|Import address table|
-    /// |13|`IMAGE_DIRECTORY_ENTRY_DELAY_IMPORT`|Delay import table|
-    /// |14|`IMAGE_DIRECTORY_ENTRY_COM_DESCRIPTOR`|COM descriptor table|
+    /// |-----|-----|-------|
+    /// |0|[IMAGE_DIRECTORY_ENTRY::IMAGE_DIRECTORY_ENTRY_EXPORT]|Export directory|
+    /// |1|[IMAGE_DIRECTORY_ENTRY::IMAGE_DIRECTORY_ENTRY_IMPORT]|Import directory|
+    /// |2|[IMAGE_DIRECTORY_ENTRY::IMAGE_DIRECTORY_ENTRY_RESOURCE]|Resource directory|
+    /// |3|[IMAGE_DIRECTORY_ENTRY::IMAGE_DIRECTORY_ENTRY_EXCEPTION]|Exception directory|
+    /// |4|[IMAGE_DIRECTORY_ENTRY::IMAGE_DIRECTORY_ENTRY_SECURITY]|Security directory|
+    /// |5|[IMAGE_DIRECTORY_ENTRY::IMAGE_DIRECTORY_ENTRY_BASERELOC]|Base relocation table|
+    /// |6|[IMAGE_DIRECTORY_ENTRY::IMAGE_DIRECTORY_ENTRY_DEBUG]|Debug directory|
+    /// |7|[IMAGE_DIRECTORY_ENTRY::IMAGE_DIRECTORY_ENTRY_ARCHITECTURE]|Architecture-specific data|
+    /// |8|[IMAGE_DIRECTORY_ENTRY::IMAGE_DIRECTORY_ENTRY_GLOBALPTR]|The relative virtual address of global pointer|
+    /// |9|[IMAGE_DIRECTORY_ENTRY::IMAGE_DIRECTORY_ENTRY_TLS]|Thread local storage directory|
+    /// |10|[IMAGE_DIRECTORY_ENTRY::IMAGE_DIRECTORY_ENTRY_LOAD_CONFIG]|Load configuration directory|
+    /// |11|[IMAGE_DIRECTORY_ENTRY::IMAGE_DIRECTORY_ENTRY_BOUND_IMPORT]|Bound import directory|
+    /// |12|[IMAGE_DIRECTORY_ENTRY::IMAGE_DIRECTORY_ENTRY_IAT]|Import address table|
+    /// |13|[IMAGE_DIRECTORY_ENTRY::IMAGE_DIRECTORY_ENTRY_DELAY_IMPORT]|Delay import table|
+    /// |14|[IMAGE_DIRECTORY_ENTRY::IMAGE_DIRECTORY_ENTRY_COM_DESCRIPTOR]|COM descriptor table|
+    /// 
+    /// To access a specific entry, you can use the [IMAGE_DIRECTORY_ENTRY] enum
     pub fn directories(&self) -> &[Option<IMAGE_DATA_DIRECTORY>;16] {
         &self.directories
     }
 
-    /// returns a reference to a vector of section headers
+    /// returns a reference to a vector of [IMAGE_SECTION_HEADER] structures
     pub fn sections(&self) -> &Vec<IMAGE_SECTION_HEADER> {
         &self.sections
     }
